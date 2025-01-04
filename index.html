@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chess Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #2f2f2f;
+            color: #fff;
+        }
+        .game-container {
+            text-align: center;
+        }
+        .chessboard {
+            display: grid;
+            grid-template-columns: repeat(8, 80px);
+            grid-template-rows: repeat(8, 80px);
+            border: 2px solid #404040;
+            margin: 20px auto;
+            background: #404040;
+            gap: 1px;
+        }
+        .square {
+            width: 80px;
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 64px;
+            position: relative;
+        }
+        .piece {
+            position: absolute;
+            width: 90%;
+            height: 90%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            mix-blend-mode: multiply;
+        }
+        .white {
+            background-color: #eeeed2;
+        }
+        .black {
+            background-color: #769656;
+        }
+        .move-input {
+            margin: 20px;
+        }
+        input {
+            padding: 12px;
+            font-size: 16px;
+            width: 200px;
+            background: #404040;
+            border: 1px solid #555;
+            color: #fff;
+            border-radius: 4px;
+        }
+        input::placeholder {
+            color: #aaa;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background-color: #7fa650;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-left: 10px;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #8fb650;
+        }
+        .status {
+            margin: 20px;
+            font-size: 18px;
+            color: #bababa;
+        }
+        .game-layout {
+            display: flex;
+            align-items: flex-start;
+            gap: 40px;
+        }
+        .piece-legend {
+            background: #404040;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 5px;
+            border-bottom: 1px solid #555;
+        }
+        .legend-piece {
+            width: 40px;
+            height: 40px;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            mix-blend-mode: multiply;
+        }
+        .legend-name {
+            margin-left: 15px;
+            color: #bababa;
+            font-size: 16px;
+        }
+        .legend-section {
+            margin-bottom: 20px;
+        }
+        .legend-title {
+            color: #fff;
+            margin-bottom: 10px;
+            font-size: 18px;
+            border-bottom: 2px solid #7fa650;
+            padding-bottom: 5px;
+        }
+        /* White Pieces */
+        .white.king { background-image: url('https://lichess1.org/assets/piece/cburnett/wK.svg'); }
+        .white.queen { background-image: url('https://lichess1.org/assets/piece/cburnett/wQ.svg'); }
+        .white.rook { background-image: url('https://lichess1.org/assets/piece/cburnett/wR.svg'); }
+        .white.bishop { background-image: url('https://lichess1.org/assets/piece/cburnett/wB.svg'); }
+        .white.knight { background-image: url('https://lichess1.org/assets/piece/cburnett/wN.svg'); }
+        .white.pawn { background-image: url('https://lichess1.org/assets/piece/cburnett/wP.svg'); }
+
+        /* Black Pieces */
+        .black.king { background-image: url('https://lichess1.org/assets/piece/cburnett/bK.svg'); }
+        .black.queen { background-image: url('https://lichess1.org/assets/piece/cburnett/bQ.svg'); }
+        .black.rook { background-image: url('https://lichess1.org/assets/piece/cburnett/bR.svg'); }
+        .black.bishop { background-image: url('https://lichess1.org/assets/piece/cburnett/bB.svg'); }
+        .black.knight { background-image: url('https://lichess1.org/assets/piece/cburnett/bN.svg'); }
+        .black.pawn { background-image: url('https://lichess1.org/assets/piece/cburnett/bP.svg'); }
+
+        .board-container {
+            position: relative;
+            padding: 30px;
+        }
+        
+        .row-label {
+            position: absolute;
+            left: 10px;
+            width: 20px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #bababa;
+            font-size: 14px;
+        }
+        
+        .col-label {
+            position: absolute;
+            bottom: 5px;
+            width: 80px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #bababa;
+            font-size: 14px;
+        }
+
+        /* Adjust piece colors for better visibility */
+        .white.square .piece {
+            filter: brightness(0.7);
+        }
+        
+        .black.square .piece {
+            filter: brightness(1.2);
+        }
+
+        .move-history {
+            background: #404040;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        
+        .move-row {
+            display: grid;
+            grid-template-columns: 40px 80px 80px;
+            padding: 5px;
+            border-bottom: 1px solid #555;
+        }
+        
+        .move-number {
+            color: #888;
+        }
+        
+        .move-white, .move-black {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Chess Game</h1>
+        <div class="game-layout">
+            <div class="board-container">
+                <div class="chessboard" id="chessboard"></div>
+                <div class="move-input">
+                    <input type="text" id="moveInput" placeholder="Enter move (e.g., e2e4)">
+                    <button onclick="makeMove()">Make Move</button>
+                </div>
+                <div class="status" id="status">White to move</div>
+                <div class="move-history" id="moveHistory">
+                    <div class="move-row">
+                        <span class="move-number">Move</span>
+                        <span class="move-white">White</span>
+                        <span class="move-black">Black</span>
+                    </div>
+                </div>
+            </div>
+            <div class="piece-legend">
+                <div class="legend-section">
+                    <div class="legend-title">White Pieces</div>
+                    <div class="legend-item">
+                        <div class="legend-piece white king"></div>
+                        <div class="legend-name">King</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-piece white queen"></div>
+                        <div class="legend-name">Queen</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-piece white rook"></div>
+                        <div class="legend-name">Rook</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-piece white bishop"></div>
+                        <div class="legend-name">Bishop</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-piece white knight"></div>
+                        <div class="legend-name">Knight</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-piece white pawn"></div>
+                        <div class="legend-name">Pawn</div>
+                    </div>
+                </div>
+                <div class="legend-section">
+                    <div class="legend-title">Black Pieces</div>
+                    <div class="legend-item">
+                        <div class="legend-piece black king"></div>
+                        <div class="legend-name">King</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-piece black queen"></div>
+                        <div class="legend-name">Queen</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-piece black rook"></div>
+                        <div class="legend-name">Rook</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-piece black bishop"></div>
+                        <div class="legend-name">Bishop</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-piece black knight"></div>
+                        <div class="legend-name">Knight</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-piece black pawn"></div>
+                        <div class="legend-name">Pawn</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="chess.js"></script>
+</body>
+</html>
