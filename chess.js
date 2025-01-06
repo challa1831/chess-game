@@ -32,6 +32,67 @@ let board = [
     ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
 ];
 
+// Add these at the top of your file
+let whiteTime = 300; // 5 minutes in seconds
+let blackTime = 300;
+let activeTimer = null;
+let lastMoveTime = Date.now();
+let isWhiteTurn = true;
+
+function updateClocks() {
+    const whiteClockElement = document.getElementById('whiteClock');
+    const blackClockElement = document.getElementById('blackClock');
+    
+    // Format and display times
+    whiteClockElement.textContent = formatTime(whiteTime);
+    blackClockElement.textContent = formatTime(blackTime);
+    
+    // Update active clock styling
+    document.querySelector('.white-clock').classList.toggle('active', isWhiteTurn);
+    document.querySelector('.black-clock').classList.toggle('active', !isWhiteTurn);
+    
+    // Add warning style for low time
+    whiteClockElement.classList.toggle('low-time', whiteTime < 30);
+    blackClockElement.classList.toggle('low-time', blackTime < 30);
+}
+
+function formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+function startClock() {
+    if (activeTimer) clearInterval(activeTimer);
+    lastMoveTime = Date.now();
+    
+    activeTimer = setInterval(() => {
+        const currentTime = Date.now();
+        const elapsed = Math.floor((currentTime - lastMoveTime) / 1000);
+        
+        if (isWhiteTurn) {
+            whiteTime = Math.max(0, whiteTime - 1);
+        } else {
+            blackTime = Math.max(0, blackTime - 1);
+        }
+        
+        updateClocks();
+        
+        // Check for time out
+        if (whiteTime === 0 || blackTime === 0) {
+            clearInterval(activeTimer);
+            const winner = whiteTime === 0 ? 'Black' : 'White';
+            document.getElementById('status').textContent = `Game Over - ${winner} wins on time!`;
+            // Show restart button
+            const restartButton = document.createElement('button');
+            restartButton.textContent = 'Restart Game';
+            restartButton.onclick = restartGame;
+            document.getElementById('status').appendChild(document.createElement('br'));
+            document.getElementById('status').appendChild(restartButton);
+        }
+    }, 1000);
+}
+
 // Initialize the board
 function initializeBoard() {
     const boardContainer = document.querySelector('.board-container');
@@ -78,6 +139,15 @@ function initializeBoard() {
 
 // Convert chess notation to board coordinates
 function parseMove(move) {
+    // Handle castling notation
+    if (move === '0-0' || move === 'o-o') {
+        return { castling: 'kingside' };
+    }
+    if (move === '0-0-0' || move === 'o-o-o') {
+        return { castling: 'queenside' };
+    }
+
+    // Existing coordinate parsing
     if (move.length !== 4) return null;
     
     const fromCol = move.charCodeAt(0) - 'a'.charCodeAt(0);
@@ -239,17 +309,142 @@ function isValidKingMove(fromRow, fromCol, toRow, toCol) {
     return { valid: false, error: "Invalid king move" };
 }
 
-// Update the makeMove function to use validation
+// Add these new functions to detect check and checkmate
+
+function isKingInCheck(isWhiteKing, testBoard = board) {
+    // Find king's position
+    let kingRow, kingCol;
+    const kingPiece = isWhiteKing ? 'K' : 'k';
+    
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            if (testBoard[row][col] === kingPiece) {
+                kingRow = row;
+                kingCol = col;
+                break;
+            }
+        }
+    }
+
+    // Check if any opponent piece can capture the king
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            const piece = testBoard[row][col];
+            if (piece !== ' ' && 
+                (isWhiteKing === (piece === piece.toLowerCase()))) {
+                const validation = isValidMove(row, col, kingRow, kingCol, piece, testBoard);
+                if (validation.valid) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+function isCheckmate(isWhiteKing) {
+    if (!isKingInCheck(isWhiteKing)) {
+        return false;
+    }
+
+    // Try all possible moves for all pieces
+    for (let fromRow = 0; fromRow < 8; fromRow++) {
+        for (let fromCol = 0; fromCol < 8; fromCol++) {
+            const piece = board[fromRow][fromCol];
+            // Check only pieces of the same color as the king
+            if (piece !== ' ' && 
+                (isWhiteKing === (piece === piece.toUpperCase()))) {
+                
+                for (let toRow = 0; toRow < 8; toRow++) {
+                    for (let toCol = 0; toCol < 8; toCol++) {
+                        const validation = isValidMove(fromRow, fromCol, toRow, toCol, piece);
+                        if (validation.valid) {
+                            // Try the move
+                            const originalPiece = board[toRow][toCol];
+                            board[toRow][toCol] = piece;
+                            board[fromRow][fromCol] = ' ';
+                            
+                            // Check if king is still in check
+                            const stillInCheck = isKingInCheck(isWhiteKing);
+                            
+                            // Undo the move
+                            board[fromRow][fromCol] = piece;
+                            board[toRow][toCol] = originalPiece;
+                            
+                            if (!stillInCheck) {
+                                return false; // Found a valid move to escape check
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return true; // No valid moves found to escape check
+}
+
+// Add restart game function
+function restartGame() {
+    board = [
+        ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+        ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+        ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+        ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+    ];
+    moveHistory = [];
+    initializeBoard();
+    updateMoveHistory();
+    document.getElementById('status').textContent = 'White to move';
+    
+    // Reset clocks
+    whiteTime = 300;
+    blackTime = 300;
+    isWhiteTurn = true;
+    updateClocks();
+    startClock();
+}
+
+// Modify the makeMove function to include check and checkmate detection
 function makeMove() {
     const moveInput = document.getElementById('moveInput');
     const move = parseMove(moveInput.value.toLowerCase());
     const status = document.getElementById('status');
     
     if (!move) {
-        status.textContent = 'Invalid move format. Use e.g., e2e4';
+        status.textContent = 'Invalid move format. Use e2e4, 0-0, or 0-0-0';
         return;
     }
-    
+
+    // Handle castling moves
+    if (move.castling) {
+        const isKingside = move.castling === 'kingside';
+        const validation = isValidCastling(isKingside, true);
+        
+        if (!validation.valid) {
+            status.textContent = `Invalid castling: ${validation.error}`;
+            return;
+        }
+
+        // Perform castling
+        const row = 7;
+        const kingFromCol = 4;
+        const kingToCol = isKingside ? 6 : 2;
+        const rookFromCol = isKingside ? 7 : 0;
+        const rookToCol = isKingside ? 5 : 3;
+
+        board[row][kingToCol] = board[row][kingFromCol];
+        board[row][rookToCol] = board[row][rookFromCol];
+        board[row][kingFromCol] = ' ';
+        board[row][rookFromCol] = ' ';
+
+        const algebraicMove = isKingside ? 'O-O' : 'O-O-O';
+        // ... rest of move processing ...
+    }
+
     // Check if the selected piece is white (uppercase)
     const piece = board[move.fromRow][move.fromCol];
     if (piece === ' ' || piece.toLowerCase() === piece) {
@@ -275,6 +470,25 @@ function makeMove() {
     board[move.toRow][move.toCol] = board[move.fromRow][move.fromCol];
     board[move.fromRow][move.fromCol] = ' ';
     
+    // Check if opponent's king is in check
+    const isBlackInCheck = isKingInCheck(false);
+    
+    if (isBlackInCheck) {
+        if (isCheckmate(false)) {
+            initializeBoard();
+            status.textContent = 'Checkmate! White wins!';
+            // Show restart option
+            const restartButton = document.createElement('button');
+            restartButton.textContent = 'Restart Game';
+            restartButton.onclick = restartGame;
+            status.appendChild(document.createElement('br'));
+            status.appendChild(restartButton);
+            return;
+        } else {
+            status.textContent = 'Black is in check!';
+        }
+    }
+
     // Add move to history
     if (moveHistory.length === 0 || moveHistory[moveHistory.length - 1].black) {
         moveHistory.push({
@@ -289,11 +503,34 @@ function makeMove() {
     updateMoveHistory();
     status.textContent = 'Computer thinking...';
     
+    // Add 5 seconds to white's clock after their move
+    whiteTime += 5;
+    isWhiteTurn = false;
+    updateClocks();
+
     // Make computer's move after a short delay
     setTimeout(() => {
         if (makeComputerMove()) {
+            // Add 5 seconds to black's clock after their move
+            blackTime += 5;
+            isWhiteTurn = true;
+            updateClocks();
             initializeBoard();
-            status.textContent = 'Your turn';
+            // Check if white king is in check
+            if (isKingInCheck(true)) {
+                if (isCheckmate(true)) {
+                    status.textContent = 'Checkmate! Black wins!';
+                    const restartButton = document.createElement('button');
+                    restartButton.textContent = 'Restart Game';
+                    restartButton.onclick = restartGame;
+                    status.appendChild(document.createElement('br'));
+                    status.appendChild(restartButton);
+                } else {
+                    status.textContent = 'White is in check!';
+                }
+            } else {
+                status.textContent = 'Your turn';
+            }
         } else {
             status.textContent = 'Game Over';
         }
@@ -375,5 +612,48 @@ function updateMoveHistory() {
     historyDiv.scrollTop = historyDiv.scrollHeight;
 }
 
-// Initialize the game
-initializeBoard(); 
+// Add castling validation
+function isValidCastling(isKingside, isWhite) {
+    const row = isWhite ? 7 : 0;
+    const kingCol = 4;
+    const rookCol = isKingside ? 7 : 0;
+    
+    // Check if king and rook are in their original positions
+    if (board[row][kingCol] !== (isWhite ? 'K' : 'k') ||
+        board[row][rookCol] !== (isWhite ? 'R' : 'r')) {
+        return { valid: false, error: "King or Rook has moved" };
+    }
+
+    // Check if path is clear
+    const cols = isKingside ? [5, 6] : [1, 2, 3];
+    for (const col of cols) {
+        if (board[row][col] !== ' ') {
+            return { valid: false, error: "Path is not clear for castling" };
+        }
+    }
+
+    // Check if king is in check
+    if (isKingInCheck(isWhite)) {
+        return { valid: false, error: "Cannot castle while in check" };
+    }
+
+    // Check if king passes through attacked squares
+    const checkCols = isKingside ? [5, 6] : [2, 3];
+    for (const col of checkCols) {
+        const tempBoard = board.map(row => [...row]);
+        tempBoard[row][kingCol] = ' ';
+        tempBoard[row][col] = isWhite ? 'K' : 'k';
+        if (isKingInCheck(isWhite, tempBoard)) {
+            return { valid: false, error: "Cannot castle through check" };
+        }
+    }
+
+    return { valid: true };
+}
+
+// Start the clock when the game initializes
+document.addEventListener('DOMContentLoaded', () => {
+    initializeBoard();
+    updateClocks();
+    startClock();
+}); 

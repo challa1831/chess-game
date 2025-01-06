@@ -54,7 +54,21 @@
             background-color: #769656;
         }
         .move-input {
-            margin: 20px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #555;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .move-input input {
+            width: calc(100% - 24px);
+            margin: 0;
+        }
+        .move-input button {
+            width: 100%;
+            margin: 0;
+            padding: 12px;
         }
         input {
             padding: 12px;
@@ -82,31 +96,44 @@
             background-color: #8fb650;
         }
         .status {
-            margin: 20px;
-            font-size: 18px;
-            color: #bababa;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            background: #333;
+            text-align: center;
         }
         .game-layout {
             display: flex;
             align-items: flex-start;
             gap: 40px;
+            justify-content: center;
         }
         .piece-legend {
             background: #404040;
             padding: 20px;
             border-radius: 8px;
             margin-top: 20px;
+            width: 250px;
+            display: flex;
+            flex-direction: column;
+        }
+        .legend-items {
+            margin-bottom: 10px;
         }
         .legend-item {
             display: flex;
             align-items: center;
-            margin: 10px 0;
             padding: 5px;
             border-bottom: 1px solid #555;
         }
+        .legend-pieces {
+            display: flex;
+            gap: 5px;
+            width: 80px;
+        }
         .legend-piece {
-            width: 40px;
-            height: 40px;
+            width: 30px;
+            height: 30px;
             background-size: contain;
             background-position: center;
             background-repeat: no-repeat;
@@ -117,15 +144,13 @@
             color: #bababa;
             font-size: 16px;
         }
-        .legend-section {
-            margin-bottom: 20px;
-        }
         .legend-title {
             color: #fff;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             font-size: 18px;
             border-bottom: 2px solid #7fa650;
             padding-bottom: 5px;
+            text-align: center;
         }
         /* White Pieces */
         .white.king { background-image: url('https://lichess1.org/assets/piece/cburnett/wK.svg'); }
@@ -146,6 +171,7 @@
         .board-container {
             position: relative;
             padding: 30px;
+            flex-shrink: 0;
         }
         
         .row-label {
@@ -205,18 +231,65 @@
         .move-white, .move-black {
             color: #fff;
         }
+
+        .chess-clocks {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-right: 20px;
+            min-width: 150px;
+            margin-top: 180px;
+        }
+
+        .clock {
+            background: #404040;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            width: 150px;
+        }
+
+        .player-label {
+            font-size: 14px;
+            color: #bababa;
+            margin-bottom: 5px;
+        }
+
+        .time {
+            font-size: 30px;
+            font-family: monospace;
+            color: #fff;
+        }
+
+        .clock.active {
+            border: 2px solid #7fa650;
+        }
+
+        .clock.low-time {
+            color: #ff4444;
+        }
+
+        .clock + .clock {
+            margin-top: 30px;
+        }
     </style>
 </head>
 <body>
     <div class="game-container">
         <h1>Chess Game</h1>
         <div class="game-layout">
+            <div class="chess-clocks">
+                <div class="clock black-clock">
+                    <div class="player-label">Black</div>
+                    <div class="time" id="blackClock">5:00</div>
+                </div>
+                <div class="clock white-clock">
+                    <div class="player-label">White</div>
+                    <div class="time" id="whiteClock">5:00</div>
+                </div>
+            </div>
             <div class="board-container">
                 <div class="chessboard" id="chessboard"></div>
-                <div class="move-input">
-                    <input type="text" id="moveInput" placeholder="Enter move (e.g., e2e4)">
-                    <button onclick="makeMove()">Make Move</button>
-                </div>
                 <div class="status" id="status">White to move</div>
                 <div class="move-history" id="moveHistory">
                     <div class="move-row">
@@ -227,60 +300,56 @@
                 </div>
             </div>
             <div class="piece-legend">
-                <div class="legend-section">
-                    <div class="legend-title">White Pieces</div>
+                <div class="legend-title">Chess Pieces</div>
+                <div class="legend-items">
                     <div class="legend-item">
-                        <div class="legend-piece white king"></div>
+                        <div class="legend-pieces">
+                            <div class="legend-piece white king"></div>
+                            <div class="legend-piece black king"></div>
+                        </div>
                         <div class="legend-name">King</div>
                     </div>
                     <div class="legend-item">
-                        <div class="legend-piece white queen"></div>
+                        <div class="legend-pieces">
+                            <div class="legend-piece white queen"></div>
+                            <div class="legend-piece black queen"></div>
+                        </div>
                         <div class="legend-name">Queen</div>
                     </div>
                     <div class="legend-item">
-                        <div class="legend-piece white rook"></div>
+                        <div class="legend-pieces">
+                            <div class="legend-piece white rook"></div>
+                            <div class="legend-piece black rook"></div>
+                        </div>
                         <div class="legend-name">Rook</div>
                     </div>
                     <div class="legend-item">
-                        <div class="legend-piece white bishop"></div>
+                        <div class="legend-pieces">
+                            <div class="legend-piece white bishop"></div>
+                            <div class="legend-piece black bishop"></div>
+                        </div>
                         <div class="legend-name">Bishop</div>
                     </div>
                     <div class="legend-item">
-                        <div class="legend-piece white knight"></div>
+                        <div class="legend-pieces">
+                            <div class="legend-piece white knight"></div>
+                            <div class="legend-piece black knight"></div>
+                        </div>
                         <div class="legend-name">Knight</div>
                     </div>
                     <div class="legend-item">
-                        <div class="legend-piece white pawn"></div>
+                        <div class="legend-pieces">
+                            <div class="legend-piece white pawn"></div>
+                            <div class="legend-piece black pawn"></div>
+                        </div>
                         <div class="legend-name">Pawn</div>
                     </div>
                 </div>
-                <div class="legend-section">
-                    <div class="legend-title">Black Pieces</div>
-                    <div class="legend-item">
-                        <div class="legend-piece black king"></div>
-                        <div class="legend-name">King</div>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-piece black queen"></div>
-                        <div class="legend-name">Queen</div>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-piece black rook"></div>
-                        <div class="legend-name">Rook</div>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-piece black bishop"></div>
-                        <div class="legend-name">Bishop</div>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-piece black knight"></div>
-                        <div class="legend-name">Knight</div>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-piece black pawn"></div>
-                        <div class="legend-name">Pawn</div>
-                    </div>
+                <div class="move-input">
+                    <input type="text" id="moveInput" placeholder="Enter move (e.g., e2e4, 0-0, 0-0-0)">
+                    <button onclick="makeMove()">Make Move</button>
                 </div>
+                <div class="status" id="status">White to move</div>
             </div>
         </div>
     </div>
