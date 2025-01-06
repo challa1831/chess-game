@@ -211,10 +211,12 @@
             background: #404040;
             padding: 15px;
             border-radius: 4px;
-            margin-top: 20px;
-            max-height: 200px;
+            margin-right: 20px;
+            height: 640px;
+            width: 200px;
             overflow-y: auto;
             text-align: left;
+            margin-top: 30px;
         }
         
         .move-row {
@@ -234,11 +236,11 @@
 
         .chess-clocks {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             gap: 20px;
-            margin-right: 20px;
-            min-width: 150px;
-            margin-top: 180px;
+            justify-content: center;
+            margin-top: 20px;
+            width: 100%;
         }
 
         .clock {
@@ -270,7 +272,7 @@
         }
 
         .clock + .clock {
-            margin-top: 30px;
+            margin-top: 0;
         }
     </style>
 </head>
@@ -278,24 +280,24 @@
     <div class="game-container">
         <h1>Chess Game</h1>
         <div class="game-layout">
-            <div class="chess-clocks">
-                <div class="clock black-clock">
-                    <div class="player-label">Black</div>
-                    <div class="time" id="blackClock">5:00</div>
-                </div>
-                <div class="clock white-clock">
-                    <div class="player-label">White</div>
-                    <div class="time" id="whiteClock">5:00</div>
+            <div class="move-history" id="moveHistory">
+                <div class="move-row">
+                    <span class="move-number">Move</span>
+                    <span class="move-white">White</span>
+                    <span class="move-black">Black</span>
                 </div>
             </div>
             <div class="board-container">
                 <div class="chessboard" id="chessboard"></div>
                 <div class="status" id="status">White to move</div>
-                <div class="move-history" id="moveHistory">
-                    <div class="move-row">
-                        <span class="move-number">Move</span>
-                        <span class="move-white">White</span>
-                        <span class="move-black">Black</span>
+                <div class="chess-clocks">
+                    <div class="clock black-clock">
+                        <div class="player-label">Black</div>
+                        <div class="time" id="blackClock">5:00</div>
+                    </div>
+                    <div class="clock white-clock">
+                        <div class="player-label">White</div>
+                        <div class="time" id="whiteClock">5:00</div>
                     </div>
                 </div>
             </div>
