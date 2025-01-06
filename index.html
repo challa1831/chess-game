@@ -241,14 +241,16 @@
             justify-content: center;
             margin-top: 20px;
             width: 100%;
+            border-top: 1px solid #555;
+            padding-top: 20px;
         }
 
         .clock {
             background: #404040;
-            padding: 15px;
+            padding: 10px;
             border-radius: 8px;
             text-align: center;
-            width: 150px;
+            width: calc(50% - 10px);
         }
 
         .player-label {
@@ -290,16 +292,6 @@
             <div class="board-container">
                 <div class="chessboard" id="chessboard"></div>
                 <div class="status" id="status">White to move</div>
-                <div class="chess-clocks">
-                    <div class="clock black-clock">
-                        <div class="player-label">Black</div>
-                        <div class="time" id="blackClock">5:00</div>
-                    </div>
-                    <div class="clock white-clock">
-                        <div class="player-label">White</div>
-                        <div class="time" id="whiteClock">5:00</div>
-                    </div>
-                </div>
             </div>
             <div class="piece-legend">
                 <div class="legend-title">Chess Pieces</div>
@@ -350,6 +342,16 @@
                 <div class="move-input">
                     <input type="text" id="moveInput" placeholder="Enter move (e.g., e2e4, 0-0, 0-0-0)">
                     <button onclick="makeMove()">Make Move</button>
+                </div>
+                <div class="chess-clocks">
+                    <div class="clock black-clock">
+                        <div class="player-label">Black</div>
+                        <div class="time" id="blackClock">5:00</div>
+                    </div>
+                    <div class="clock white-clock">
+                        <div class="player-label">White</div>
+                        <div class="time" id="whiteClock">5:00</div>
+                    </div>
                 </div>
                 <div class="status" id="status">White to move</div>
             </div>
