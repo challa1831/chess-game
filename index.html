@@ -113,9 +113,10 @@
             padding: 20px;
             border-radius: 8px;
             margin-top: 20px;
-            width: 250px;
+            width: 200px;
             display: flex;
             flex-direction: column;
+            gap: 20px;
         }
         .legend-items {
             margin-bottom: 10px;
@@ -143,14 +144,6 @@
             margin-left: 15px;
             color: #bababa;
             font-size: 16px;
-        }
-        .legend-title {
-            color: #fff;
-            margin-bottom: 15px;
-            font-size: 18px;
-            border-bottom: 2px solid #7fa650;
-            padding-bottom: 5px;
-            text-align: center;
         }
         /* White Pieces */
         .white.king { background-image: url('https://lichess1.org/assets/piece/cburnett/wK.svg'); }
@@ -236,31 +229,35 @@
 
         .chess-clocks {
             display: flex;
-            flex-direction: row;
-            gap: 20px;
-            justify-content: center;
-            margin-top: 20px;
+            flex-direction: column;
             width: 100%;
+            gap: 5px;
+            margin-top: 15px;
+            padding-top: 15px;
             border-top: 1px solid #555;
-            padding-top: 20px;
+        }
+
+        .clock-container {
+            display: flex;
+            gap: 10px;
         }
 
         .clock {
-            background: #404040;
-            padding: 10px;
-            border-radius: 8px;
+            flex: 1;
+            background: #333;
+            padding: 8px;
+            border-radius: 4px;
             text-align: center;
-            width: calc(50% - 10px);
         }
 
         .player-label {
-            font-size: 14px;
+            font-size: 12px;
             color: #bababa;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
         }
 
         .time {
-            font-size: 30px;
+            font-size: 24px;
             font-family: monospace;
             color: #fff;
         }
@@ -276,12 +273,76 @@
         .clock + .clock {
             margin-top: 0;
         }
+
+        .notifications {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #404040;
+            padding: 15px 30px;
+            border-radius: 8px;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .clock-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #555;
+        }
+
+        .clock-controls button {
+            padding: 8px 15px;
+            border-radius: 4px;
+            background: #7fa650;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            flex: 1;
+            min-width: 80px;
+            transition: background 0.2s;
+        }
+
+        .clock-controls select {
+            padding: 8px 15px;
+            border-radius: 4px;
+            background: #404040;
+            color: white;
+            border: 1px solid #555;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            flex: 1;
+        }
+
+        .clock-controls button:hover {
+            background: #8fb650;
+        }
+
+        .paused .time {
+            opacity: 0.5;
+        }
+
+        #pauseButton.paused {
+            background: #d85000;
+        }
+
+        #pauseButton.paused:hover {
+            background: #e85800;
+        }
     </style>
 </head>
 <body>
     <div class="game-container">
-        <h1>Chess Game</h1>
         <div class="game-layout">
+            <div class="notifications" id="notifications">White to move</div>
             <div class="move-history" id="moveHistory">
                 <div class="move-row">
                     <span class="move-number">Move</span>
@@ -291,10 +352,12 @@
             </div>
             <div class="board-container">
                 <div class="chessboard" id="chessboard"></div>
-                <div class="status" id="status">White to move</div>
             </div>
             <div class="piece-legend">
-                <div class="legend-title">Chess Pieces</div>
+                <div class="move-input">
+                    <input type="text" id="moveInput" placeholder="Enter move (e.g., e2e4, 0-0, 0-0-0)">
+                    <button onclick="makeMove()">Make Move</button>
+                </div>
                 <div class="legend-items">
                     <div class="legend-item">
                         <div class="legend-pieces">
@@ -339,21 +402,25 @@
                         <div class="legend-name">Pawn</div>
                     </div>
                 </div>
-                <div class="move-input">
-                    <input type="text" id="moveInput" placeholder="Enter move (e.g., e2e4, 0-0, 0-0-0)">
-                    <button onclick="makeMove()">Make Move</button>
-                </div>
                 <div class="chess-clocks">
-                    <div class="clock black-clock">
-                        <div class="player-label">Black</div>
-                        <div class="time" id="blackClock">5:00</div>
-                    </div>
-                    <div class="clock white-clock">
-                        <div class="player-label">White</div>
-                        <div class="time" id="whiteClock">5:00</div>
+                    <div class="clock-container">
+                        <div class="clock white-clock">
+                            <div class="player-label">White</div>
+                            <div class="time" id="whiteClock">5:00</div>
+                        </div>
+                        <div class="clock black-clock">
+                            <div class="player-label">Black</div>
+                            <div class="time" id="blackClock">5:00</div>
+                        </div>
                     </div>
                 </div>
-                <div class="status" id="status">White to move</div>
+                <div class="clock-controls">
+                    <button id="pauseButton" onclick="togglePause()">Pause</button>
+                    <select id="timeControl" onchange="changeTimeControl()">
+                        <option value="5+5">5 min + 5</option>
+                        <option value="10+0">10 min</option>
+                    </select>
+                </div>
             </div>
         </div>
     </div>

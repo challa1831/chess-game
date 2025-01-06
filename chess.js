@@ -38,6 +38,12 @@ let blackTime = 300;
 let activeTimer = null;
 let lastMoveTime = Date.now();
 let isWhiteTurn = true;
+let isPaused = false;
+let increment = 5; // Default increment in seconds
+
+// Add these variables at the top
+let draggedPiece = null;
+let startSquare = null;
 
 function updateClocks() {
     const whiteClockElement = document.getElementById('whiteClock');
@@ -67,28 +73,29 @@ function startClock() {
     lastMoveTime = Date.now();
     
     activeTimer = setInterval(() => {
-        const currentTime = Date.now();
-        const elapsed = Math.floor((currentTime - lastMoveTime) / 1000);
-        
-        if (isWhiteTurn) {
-            whiteTime = Math.max(0, whiteTime - 1);
-        } else {
-            blackTime = Math.max(0, blackTime - 1);
-        }
-        
-        updateClocks();
-        
-        // Check for time out
-        if (whiteTime === 0 || blackTime === 0) {
-            clearInterval(activeTimer);
-            const winner = whiteTime === 0 ? 'Black' : 'White';
-            document.getElementById('status').textContent = `Game Over - ${winner} wins on time!`;
-            // Show restart button
-            const restartButton = document.createElement('button');
-            restartButton.textContent = 'Restart Game';
-            restartButton.onclick = restartGame;
-            document.getElementById('status').appendChild(document.createElement('br'));
-            document.getElementById('status').appendChild(restartButton);
+        if (!isPaused) {
+            const currentTime = Date.now();
+            const elapsed = Math.floor((currentTime - lastMoveTime) / 1000);
+            
+            if (isWhiteTurn) {
+                whiteTime = Math.max(0, whiteTime - 1);
+            } else {
+                blackTime = Math.max(0, blackTime - 1);
+            }
+            
+            updateClocks();
+            
+            if (whiteTime === 0 || blackTime === 0) {
+                clearInterval(activeTimer);
+                const winner = whiteTime === 0 ? 'Black' : 'White';
+                document.getElementById('notifications').textContent = 
+                    `Game Over - ${winner} wins on time!`;
+                // Show restart button
+                const restartButton = document.createElement('button');
+                restartButton.textContent = 'Restart Game';
+                restartButton.onclick = restartGame;
+                document.getElementById('notifications').appendChild(restartButton);
+            }
         }
     }, 1000);
 }
@@ -129,8 +136,18 @@ function initializeBoard() {
             if (piece !== ' ') {
                 const pieceDiv = document.createElement('div');
                 pieceDiv.className = `piece ${pieceClasses[piece]}`;
+                
+                // Add drag events
+                pieceDiv.draggable = true;
+                pieceDiv.addEventListener('dragstart', handleDragStart);
+                pieceDiv.addEventListener('dragend', handleDragEnd);
+                
                 square.appendChild(pieceDiv);
             }
+            
+            // Add drop events to squares
+            square.addEventListener('dragover', handleDragOver);
+            square.addEventListener('drop', handleDrop);
             
             chessboard.appendChild(square);
         }
@@ -398,7 +415,7 @@ function restartGame() {
     moveHistory = [];
     initializeBoard();
     updateMoveHistory();
-    document.getElementById('status').textContent = 'White to move';
+    document.getElementById('notifications').textContent = 'White to move';
     
     // Reset clocks
     whiteTime = 300;
@@ -470,69 +487,43 @@ function makeMove() {
     board[move.toRow][move.toCol] = board[move.fromRow][move.fromCol];
     board[move.fromRow][move.fromCol] = ' ';
     
-    // Check if opponent's king is in check
-    const isBlackInCheck = isKingInCheck(false);
-    
-    if (isBlackInCheck) {
-        if (isCheckmate(false)) {
-            initializeBoard();
-            status.textContent = 'Checkmate! White wins!';
-            // Show restart option
-            const restartButton = document.createElement('button');
-            restartButton.textContent = 'Restart Game';
-            restartButton.onclick = restartGame;
-            status.appendChild(document.createElement('br'));
-            status.appendChild(restartButton);
-            return;
-        } else {
-            status.textContent = 'Black is in check!';
-        }
-    }
-
-    // Add move to history
-    if (moveHistory.length === 0 || moveHistory[moveHistory.length - 1].black) {
-        moveHistory.push({
-            number: moveHistory.length + 1,
-            white: algebraicMove,
-            black: ''
-        });
-    }
-    
-    // Update the display
-    initializeBoard();
-    updateMoveHistory();
-    status.textContent = 'Computer thinking...';
-    
-    // Add 5 seconds to white's clock after their move
-    whiteTime += 5;
+    // Add increment after move
+    whiteTime += increment;
     isWhiteTurn = false;
     updateClocks();
+
+    // Update display for white's move
+    initializeBoard();
+    updateMoveHistory();
+    document.getElementById('notifications').textContent = 'Computer thinking...';
 
     // Make computer's move after a short delay
     setTimeout(() => {
         if (makeComputerMove()) {
-            // Add 5 seconds to black's clock after their move
-            blackTime += 5;
+            blackTime += increment;
             isWhiteTurn = true;
             updateClocks();
+            
+            // Important: Reinitialize board after computer's move
             initializeBoard();
-            // Check if white king is in check
+            updateMoveHistory();
+            
+            // Check for check/checkmate after computer's move
             if (isKingInCheck(true)) {
                 if (isCheckmate(true)) {
-                    status.textContent = 'Checkmate! Black wins!';
+                    document.getElementById('notifications').textContent = 'Checkmate! Black wins!';
                     const restartButton = document.createElement('button');
                     restartButton.textContent = 'Restart Game';
                     restartButton.onclick = restartGame;
-                    status.appendChild(document.createElement('br'));
-                    status.appendChild(restartButton);
+                    document.getElementById('notifications').appendChild(restartButton);
                 } else {
-                    status.textContent = 'White is in check!';
+                    document.getElementById('notifications').textContent = 'White is in check!';
                 }
             } else {
-                status.textContent = 'Your turn';
+                document.getElementById('notifications').textContent = 'Your turn';
             }
         } else {
-            status.textContent = 'Game Over';
+            document.getElementById('notifications').textContent = 'Game Over';
         }
         moveInput.value = '';
     }, 500);
@@ -651,8 +642,118 @@ function isValidCastling(isKingside, isWhite) {
     return { valid: true };
 }
 
-// Start the clock when the game initializes
+// Add these functions
+function togglePause() {
+    isPaused = !isPaused;
+    const pauseButton = document.getElementById('pauseButton');
+    
+    if (isPaused) {
+        pauseButton.textContent = 'Resume';
+        pauseButton.classList.add('paused');
+    } else {
+        pauseButton.textContent = 'Pause';
+        pauseButton.classList.remove('paused');
+        lastMoveTime = Date.now(); // Reset the timer when resuming
+    }
+    
+    document.querySelector('.chess-clocks').classList.toggle('paused', isPaused);
+}
+
+function changeTimeControl() {
+    const timeControl = document.getElementById('timeControl').value;
+    const [minutes, inc] = timeControl.split('+').map(Number);
+    
+    // Reset times
+    whiteTime = minutes * 60;
+    blackTime = minutes * 60;
+    increment = inc;
+    
+    // Update display
+    updateClocks();
+    
+    // Restart clock if game is in progress
+    if (activeTimer) {
+        clearInterval(activeTimer);
+        startClock();
+    }
+}
+
+// Add drag and drop handler functions
+function handleDragStart(e) {
+    if (!isWhiteTurn) {
+        e.preventDefault();
+        return;
+    }
+
+    const piece = board[e.target.parentNode.dataset.row][e.target.parentNode.dataset.col];
+    if (piece.toLowerCase() === piece) {  // If it's a black piece
+        e.preventDefault();
+        return;
+    }
+
+    draggedPiece = e.target;
+    startSquare = e.target.parentNode;
+    e.target.style.opacity = '0.4';
+}
+
+function handleDragEnd(e) {
+    draggedPiece.style.opacity = '1';
+    draggedPiece = null;
+    startSquare = null;
+}
+
+function handleDragOver(e) {
+    e.preventDefault(); // Necessary to allow dropping
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    
+    if (!draggedPiece || !startSquare) return;
+
+    // Only allow white pieces to be moved on white's turn
+    const piece = board[startSquare.dataset.row][startSquare.dataset.col];
+    if (!isWhiteTurn || piece.toLowerCase() === piece) {
+        return;
+    }
+
+    const fromRow = parseInt(startSquare.dataset.row);
+    const fromCol = parseInt(startSquare.dataset.col);
+    const toRow = parseInt(e.target.dataset.row || e.target.parentNode.dataset.row);
+    const toCol = parseInt(e.target.dataset.col || e.target.parentNode.dataset.col);
+
+    // Create move string in the format expected by parseMove
+    const moveString = `${String.fromCharCode(97 + fromCol)}${8 - fromRow}${String.fromCharCode(97 + toCol)}${8 - toRow}`;
+    
+    // Use existing move input element to process the move
+    const moveInput = document.getElementById('moveInput');
+    moveInput.value = moveString;
+    
+    // Process the move and trigger computer's response
+    makeMove();
+    moveInput.value = ''; // Clear the input after move
+}
+
+// Add CSS for drag and drop visual feedback
+function addDragStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+        .piece {
+            cursor: grab;
+        }
+        .piece:active {
+            cursor: grabbing;
+        }
+        .square.valid-drop {
+            background-color: rgba(127, 166, 80, 0.4);
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Call this when initializing the game
 document.addEventListener('DOMContentLoaded', () => {
+    addDragStyles();
     initializeBoard();
     updateClocks();
     startClock();
