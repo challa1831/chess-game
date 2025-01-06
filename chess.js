@@ -425,67 +425,66 @@ function restartGame() {
     startClock();
 }
 
-// Modify the makeMove function to include check and checkmate detection
+// Add this function to check if a move puts the king out of check
+function doesMoveResolveCheck(fromRow, fromCol, toRow, toCol, piece, isWhiteKing) {
+    // Try the move on a temporary board
+    const tempBoard = board.map(row => [...row]);
+    tempBoard[toRow][toCol] = tempBoard[fromRow][fromCol];
+    tempBoard[fromRow][fromCol] = ' ';
+    
+    // Check if king is still in check after the move
+    return !isKingInCheck(isWhiteKing, tempBoard);
+}
+
+// Modify the makeMove function to include check validation
 function makeMove() {
     const moveInput = document.getElementById('moveInput');
     const move = parseMove(moveInput.value.toLowerCase());
-    const status = document.getElementById('status');
     
     if (!move) {
-        status.textContent = 'Invalid move format. Use e2e4, 0-0, or 0-0-0';
+        document.getElementById('notifications').textContent = 'Invalid move format. Use e2e4, 0-0, or 0-0-0';
         return;
-    }
-
-    // Handle castling moves
-    if (move.castling) {
-        const isKingside = move.castling === 'kingside';
-        const validation = isValidCastling(isKingside, true);
-        
-        if (!validation.valid) {
-            status.textContent = `Invalid castling: ${validation.error}`;
-            return;
-        }
-
-        // Perform castling
-        const row = 7;
-        const kingFromCol = 4;
-        const kingToCol = isKingside ? 6 : 2;
-        const rookFromCol = isKingside ? 7 : 0;
-        const rookToCol = isKingside ? 5 : 3;
-
-        board[row][kingToCol] = board[row][kingFromCol];
-        board[row][rookToCol] = board[row][rookFromCol];
-        board[row][kingFromCol] = ' ';
-        board[row][rookFromCol] = ' ';
-
-        const algebraicMove = isKingside ? 'O-O' : 'O-O-O';
-        // ... rest of move processing ...
     }
 
     // Check if the selected piece is white (uppercase)
     const piece = board[move.fromRow][move.fromCol];
     if (piece === ' ' || piece.toLowerCase() === piece) {
-        status.textContent = 'Invalid move: Must move a white piece';
+        document.getElementById('notifications').textContent = 'Invalid move: Must move a white piece';
         return;
+    }
+
+    // If king is in check, only allow moves that resolve the check
+    if (isKingInCheck(true)) {
+        if (!doesMoveResolveCheck(move.fromRow, move.fromCol, move.toRow, move.toCol, piece, true)) {
+            document.getElementById('notifications').textContent = 'Invalid move: Must move king out of check';
+            return;
+        }
     }
 
     // Validate the move
     const validation = isValidMove(move.fromRow, move.fromCol, move.toRow, move.toCol, piece);
     if (!validation.valid) {
-        status.textContent = `Invalid move: ${validation.error}`;
+        document.getElementById('notifications').textContent = `Invalid move: ${validation.error}`;
         return;
     }
     
-    const isCapture = board[move.toRow][move.toCol] !== ' ';
-    const algebraicMove = getAlgebraicNotation(
-        move.fromRow, move.fromCol, 
-        move.toRow, move.toCol, 
-        piece, isCapture
-    );
-    
     // Make the move
+    const isCapture = board[move.toRow][move.toCol] !== ' ';
     board[move.toRow][move.toCol] = board[move.fromRow][move.fromCol];
     board[move.fromRow][move.fromCol] = ' ';
+
+    // Check if black king is in check or checkmate after white's move
+    if (isKingInCheck(false)) {
+        if (isCheckmate(false)) {
+            initializeBoard();
+            document.getElementById('notifications').textContent = 'Checkmate! White wins!';
+            const restartButton = document.createElement('button');
+            restartButton.textContent = 'Restart Game';
+            restartButton.onclick = restartGame;
+            document.getElementById('notifications').appendChild(restartButton);
+            return;
+        }
+    }
     
     // Add increment after move
     whiteTime += increment;
@@ -504,7 +503,6 @@ function makeMove() {
             isWhiteTurn = true;
             updateClocks();
             
-            // Important: Reinitialize board after computer's move
             initializeBoard();
             updateMoveHistory();
             
@@ -722,16 +720,20 @@ function handleDrop(e) {
     const toRow = parseInt(e.target.dataset.row || e.target.parentNode.dataset.row);
     const toCol = parseInt(e.target.dataset.col || e.target.parentNode.dataset.col);
 
-    // Create move string in the format expected by parseMove
+    // If king is in check, validate that this move resolves the check
+    if (isKingInCheck(true)) {
+        if (!doesMoveResolveCheck(fromRow, fromCol, toRow, toCol, piece, true)) {
+            document.getElementById('notifications').textContent = 'Invalid move: Must move king out of check';
+            return;
+        }
+    }
+
+    // Create move string and process the move
     const moveString = `${String.fromCharCode(97 + fromCol)}${8 - fromRow}${String.fromCharCode(97 + toCol)}${8 - toRow}`;
-    
-    // Use existing move input element to process the move
     const moveInput = document.getElementById('moveInput');
     moveInput.value = moveString;
-    
-    // Process the move and trigger computer's response
     makeMove();
-    moveInput.value = ''; // Clear the input after move
+    moveInput.value = '';
 }
 
 // Add CSS for drag and drop visual feedback
