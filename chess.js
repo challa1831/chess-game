@@ -183,14 +183,31 @@ function getPieceLetter(piece) {
     return piece.toUpperCase();
 }
 
-function getAlgebraicNotation(fromRow, fromCol, toRow, toCol, piece, isCapture, isCheck = false, isCheckmate = false) {
-    const from = String.fromCharCode(97 + fromCol) + (8 - fromRow);
-    const to = String.fromCharCode(97 + toCol) + (8 - toRow);
+function getAlgebraicNotation(fromRow, fromCol, toRow, toCol, piece, isCapture, isCheck, isCheckmate) {
     const pieceLetter = getPieceLetter(piece);
     const captureNotation = isCapture ? 'x' : '';
-    const checkNotation = isCheckmate ? '#' : (isCheck ? '+' : '');
+    const to = String.fromCharCode(97 + toCol) + (8 - toRow);
     
-    return `${pieceLetter}${captureNotation}${to}${checkNotation}`;
+    // Debug the parameters
+    console.log('Notation parameters:', {
+        piece,
+        isCheck,
+        isCheckmate,
+        from: `${fromRow},${fromCol}`,
+        to: `${toRow},${toCol}`
+    });
+
+    // Make sure checkmate takes precedence over check
+    let checkNotation = '';
+    if (isCheckmate) {
+        checkNotation = '#';
+    } else if (isCheck) {
+        checkNotation = '+';
+    }
+
+    const notation = `${pieceLetter}${captureNotation}${to}${checkNotation}`;
+    console.log('Generated notation:', notation);
+    return notation;
 }
 
 // Add move history tracking
@@ -203,6 +220,11 @@ function isValidMove(fromRow, fromCol, toRow, toCol, piece, testBoard = board) {
     const deltaRow = toRow - fromRow;
     const deltaCol = toCol - fromCol;
 
+    // Basic validation
+    if (!isWithinBoard(fromRow, fromCol) || !isWithinBoard(toRow, toCol)) {
+        return { valid: false, error: "Move outside board" };
+    }
+
     // Can't capture your own pieces
     const targetPiece = testBoard[toRow][toCol];
     if (targetPiece !== ' ' && 
@@ -210,22 +232,49 @@ function isValidMove(fromRow, fromCol, toRow, toCol, piece, testBoard = board) {
         return { valid: false, error: "Cannot capture your own piece" };
     }
 
+    let validation;
     switch (pieceType) {
-        case 'p': // Pawn
-            return isValidPawnMove(fromRow, fromCol, toRow, toCol, isWhite, testBoard);
-        case 'r': // Rook
-            return isValidRookMove(fromRow, fromCol, toRow, toCol, testBoard);
-        case 'n': // Knight
-            return isValidKnightMove(fromRow, fromCol, toRow, toCol);
-        case 'b': // Bishop
-            return isValidBishopMove(fromRow, fromCol, toRow, toCol, testBoard);
-        case 'q': // Queen
-            return isValidQueenMove(fromRow, fromCol, toRow, toCol, testBoard);
-        case 'k': // King
-            return isValidKingMove(fromRow, fromCol, toRow, toCol);
+        case 'p':
+            validation = isValidPawnMove(fromRow, fromCol, toRow, toCol, isWhite, testBoard);
+            break;
+        case 'r':
+            validation = isValidRookMove(fromRow, fromCol, toRow, toCol, testBoard);
+            break;
+        case 'n':
+            validation = isValidKnightMove(fromRow, fromCol, toRow, toCol);
+            break;
+        case 'b':
+            validation = isValidBishopMove(fromRow, fromCol, toRow, toCol, testBoard);
+            break;
+        case 'q':
+            validation = isValidQueenMove(fromRow, fromCol, toRow, toCol, testBoard);
+            break;
+        case 'k':
+            validation = isValidKingMove(fromRow, fromCol, toRow, toCol, testBoard);
+            break;
         default:
             return { valid: false, error: "Invalid piece" };
     }
+
+    if (!validation.valid) {
+        return validation;
+    }
+
+    // Check if move would leave/put own king in check
+    const tempBoard = testBoard.map(row => [...row]);
+    tempBoard[toRow][toCol] = piece;
+    tempBoard[fromRow][fromCol] = ' ';
+    
+    if (isKingInCheck(isWhite, tempBoard)) {
+        return { valid: false, error: "Move would leave/put own king in check" };
+    }
+
+    return { valid: true };
+}
+
+// Add helper function
+function isWithinBoard(row, col) {
+    return row >= 0 && row < 8 && col >= 0 && col < 8;
 }
 
 function isValidPawnMove(fromRow, fromCol, toRow, toCol, isWhite, testBoard = board) {
@@ -315,14 +364,48 @@ function isValidQueenMove(fromRow, fromCol, toRow, toCol, testBoard = board) {
     return { valid: false, error: "Invalid queen move" };
 }
 
-function isValidKingMove(fromRow, fromCol, toRow, toCol) {
+function isValidKingMove(fromRow, fromCol, toRow, toCol, testBoard = board) {
     const deltaRow = Math.abs(toRow - fromRow);
     const deltaCol = Math.abs(toCol - fromCol);
     
     if (deltaRow <= 1 && deltaCol <= 1) {
+        // Check if the move would put the king in check
+        const tempBoard = testBoard.map(row => [...row]);
+        const piece = tempBoard[fromRow][fromCol];
+        const isWhiteKing = piece === piece.toUpperCase();
+        
+        tempBoard[toRow][toCol] = piece;
+        tempBoard[fromRow][fromCol] = ' ';
+        
+        // Check if the destination square is under attack
+        if (isSquareUnderAttack(toRow, toCol, isWhiteKing, tempBoard)) {
+            return { valid: false, error: "Cannot move king into check" };
+        }
+        
         return { valid: true };
     }
     return { valid: false, error: "Invalid king move" };
+}
+
+// Add new helper function to check if a square is under attack
+function isSquareUnderAttack(row, col, isWhiteKing, testBoard = board) {
+    for (let fromRow = 0; fromRow < 8; fromRow++) {
+        for (let fromCol = 0; fromCol < 8; fromCol++) {
+            const piece = testBoard[fromRow][fromCol];
+            if (piece === ' ' || 
+                (isWhiteKing === (piece === piece.toUpperCase()))) {
+                continue;
+            }
+            
+            // Check if opponent piece can move to this square
+            const validation = isValidMove(fromRow, fromCol, row, col, piece, testBoard);
+            if (validation.valid) {
+                console.log(`Square [${row},${col}] is under attack by ${piece} at [${fromRow},${fromCol}]`);
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 // Add these new functions to detect check and checkmate
@@ -371,8 +454,11 @@ function isKingInCheck(isWhiteKing, testBoard = board) {
 }
 
 function isCheckmate(isWhiteKing) {
+    console.log('Starting checkmate check for', isWhiteKing ? 'white' : 'black', 'king');
+    
     // First check if king is in check
     if (!isKingInCheck(isWhiteKing)) {
+        console.log('Not in check, so not checkmate');
         return false;
     }
 
@@ -387,35 +473,64 @@ function isCheckmate(isWhiteKing) {
                 continue;
             }
             
+            console.log(`Testing piece ${piece} at [${fromRow}, ${fromCol}]`);
+            
             // Try moving to every square
             for (let toRow = 0; toRow < 8; toRow++) {
                 for (let toCol = 0; toCol < 8; toCol++) {
-                    // Skip if it's the same square
-                    if (fromRow === toRow && fromCol === toCol) {
-                        continue;
-                    }
+                    // Skip same square
+                    if (fromRow === toRow && fromCol === toCol) continue;
 
-                    // Check if move is valid according to piece rules
+                    // Check if move is valid according to piece rules and doesn't leave king in check
                     const validation = isValidMove(fromRow, fromCol, toRow, toCol, piece);
-                    if (!validation.valid) {
-                        continue;
-                    }
-
-                    // Try the move on a temporary board
-                    const tempBoard = board.map(row => [...row]);
-                    tempBoard[toRow][toCol] = piece;
-                    tempBoard[fromRow][fromCol] = ' ';
-
-                    // If this move gets the king out of check, it's not checkmate
-                    if (!isKingInCheck(isWhiteKing, tempBoard)) {
-                        return false;
+                    if (validation.valid) {
+                        console.log(`Found legal move: ${piece} from [${fromRow},${fromCol}] to [${toRow},${toCol}]`);
+                        return false;  // Found a legal move that prevents checkmate
                     }
                 }
             }
         }
     }
 
+    console.log('No legal moves found - Checkmate confirmed');
     return true;
+}
+
+// Helper function to find king position
+function findKing(isWhiteKing) {
+    const kingPiece = isWhiteKing ? 'K' : 'k';
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            if (board[row][col] === kingPiece) {
+                return { row, col };
+            }
+        }
+    }
+    return null;
+}
+
+// Helper function to find attacking pieces
+function findAttackingPieces(kingPos, isWhiteKing) {
+    const attackers = [];
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            const piece = board[row][col];
+            if (piece === ' ' || 
+                (isWhiteKing === (piece === piece.toUpperCase()))) {
+                continue;
+            }
+            
+            const validation = isValidMove(row, col, kingPos.row, kingPos.col, piece);
+            if (validation.valid) {
+                attackers.push({
+                    piece,
+                    row,
+                    col
+                });
+            }
+        }
+    }
+    return attackers;
 }
 
 // Add restart game function
@@ -441,6 +556,11 @@ function restartGame() {
     isWhiteTurn = true;
     updateClocks();
     startClock();
+    
+    // Re-enable move input
+    const moveInput = document.getElementById('moveInput');
+    moveInput.disabled = false;
+    moveInput.value = '';
 }
 
 // Add this function to check if a move puts the king out of check
@@ -466,11 +586,19 @@ function handleGameEnd(message) {
     updateClocks();
     
     // Show game end message and restart button
-    document.getElementById('notifications').textContent = message;
+    const notifications = document.getElementById('notifications');
+    notifications.textContent = message;
+    
+    // Add restart button
     const restartButton = document.createElement('button');
     restartButton.textContent = 'Restart Game';
     restartButton.onclick = restartGame;
-    document.getElementById('notifications').appendChild(restartButton);
+    restartButton.style.marginLeft = '10px';
+    notifications.appendChild(restartButton);
+    
+    // Disable move input
+    const moveInput = document.getElementById('moveInput');
+    moveInput.disabled = true;
 }
 
 // Modify the makeMove function's checkmate sections
@@ -514,15 +642,32 @@ function makeMove() {
 
     // Check for check/checkmate
     const isCheck = isKingInCheck(false);
+    console.log('Is black king in check?', isCheck);
+
     const mated = isCheck && isCheckmate(false);
+    console.log('Is it checkmate?', mated);
     
+    console.log('Move check status:', {
+        isCheck,
+        mated,
+        piece,
+        from: `${move.fromRow},${move.fromCol}`,
+        to: `${move.toRow},${move.toCol}`
+    });
+
     // Get algebraic notation for the move
     const algebraicMove = getAlgebraicNotation(
-        move.fromRow, move.fromCol,
-        move.toRow, move.toCol,
-        piece, isCapture,
-        isCheck, mated
+        move.fromRow,
+        move.fromCol,
+        move.toRow,
+        move.toCol,
+        piece,
+        isCapture,
+        isCheck,
+        mated
     );
+
+    console.log('Generated notation:', algebraicMove);
 
     // Add to move history
     if (moveHistory.length === 0 || moveHistory[moveHistory.length - 1].black) {
@@ -533,12 +678,12 @@ function makeMove() {
         });
     }
 
-    // Handle checkmate
+    // Handle checkmate by white
     if (mated) {
         initializeBoard();
         updateMoveHistory();
         handleGameEnd('Checkmate! White wins!');
-        return;
+        return;  // Important: End the function here
     }
 
     // Update display and continue game
@@ -569,12 +714,14 @@ function makeMove() {
         updateMoveHistory();
 
         const whiteInCheck = isKingInCheck(true);
+        if (whiteInCheck && isCheckmate(true)) {
+            handleGameEnd('Checkmate! Black wins!');
+            return;  // Important: End here if black checkmates
+        }
+        
+        // Update status only if game hasn't ended
         if (whiteInCheck) {
-            if (isCheckmate(true)) {
-                handleGameEnd('Checkmate! Black wins!');
-            } else {
-                document.getElementById('notifications').textContent = 'White is in check!';
-            }
+            document.getElementById('notifications').textContent = 'White is in check!';
         } else {
             document.getElementById('notifications').textContent = 'Your turn';
         }
@@ -596,6 +743,14 @@ function makeComputerMove() {
                 for (let toCol = 0; toCol < 8; toCol++) {
                     if (fromRow === toRow && fromCol === toCol) continue;
                     
+                    // For king moves, check if destination is under attack
+                    if (piece.toLowerCase() === 'k') {
+                        if (isSquareUnderAttack(toRow, toCol, false)) {
+                            console.log(`Skipping king move to attacked square [${toRow},${toCol}]`);
+                            continue;
+                        }
+                    }
+                    
                     const validation = isValidMove(fromRow, fromCol, toRow, toCol, piece);
                     if (!validation.valid) continue;
                     
@@ -604,8 +759,11 @@ function makeComputerMove() {
                     tempBoard[toRow][toCol] = piece;
                     tempBoard[fromRow][fromCol] = ' ';
                     
-                    // Skip moves that leave own king in check
-                    if (isKingInCheck(false, tempBoard)) continue;
+                    // Skip moves that put own king in check
+                    if (isKingInCheck(false, tempBoard)) {
+                        console.log(`Skipping illegal move that puts own king in check: ${piece} from [${fromRow},${fromCol}] to [${toRow},${toCol}]`);
+                        continue;
+                    }
                     
                     possibleMoves.push({
                         fromRow,
@@ -619,26 +777,34 @@ function makeComputerMove() {
         }
     }
     
-    if (possibleMoves.length === 0) return false;
+    if (possibleMoves.length === 0) {
+        console.log('No legal moves available for black');
+        return false;
+    }
     
     // Choose and make a move
     const move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-    const isCapture = board[move.toRow][move.toCol] !== ' ';
+    console.log(`Computer choosing move: ${move.piece} from [${move.fromRow},${move.fromCol}] to [${move.toRow},${move.toCol}]`);
     
-    // Make the move
+    const isCapture = board[move.toRow][move.toCol] !== ' ';
     board[move.toRow][move.toCol] = move.piece;
     board[move.fromRow][move.fromCol] = ' ';
     
-    // Check for check/checkmate
-    const isCheck = isKingInCheck(true);
-    const mated = isCheck && isCheckmate(true);
+    // Verify the move didn't put own king in check (safety check)
+    if (isKingInCheck(false)) {
+        console.error('ERROR: Computer made an illegal move that puts own king in check!');
+    }
     
-    // Get algebraic notation
+    // Get algebraic notation with proper checkmate notation
     const algebraicMove = getAlgebraicNotation(
-        move.fromRow, move.fromCol,
-        move.toRow, move.toCol,
-        move.piece, isCapture,
-        isCheck, mated
+        move.fromRow,
+        move.fromCol,
+        move.toRow,
+        move.toCol,
+        move.piece,
+        isCapture,
+        isKingInCheck(true),
+        isCheckmate(true)
     );
     
     // Add to move history
